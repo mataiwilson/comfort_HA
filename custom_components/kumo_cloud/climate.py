@@ -27,13 +27,12 @@ from .const import (
     OPERATION_MODE_DRY,
     OPERATION_MODE_VENT,
     OPERATION_MODE_AUTO,
-    FAN_SPEED_AUTO,
-    FAN_SPEED_LOW,
-    FAN_SPEED_MEDIUM,
-    FAN_SPEED_HIGH,
-    AIR_DIRECTION_HORIZONTAL,
-    AIR_DIRECTION_VERTICAL,
-    AIR_DIRECTION_SWING,
+    API_TO_UI_FAN,
+    UI_TO_API_FAN,
+    UI_FAN_SPEEDS,
+    API_TO_UI_VANE,
+    UI_TO_API_VANE,
+    UI_VANE_POSITIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,16 +49,6 @@ KUMO_TO_HVAC_MODE = {
 
 # Reverse mapping
 HVAC_TO_KUMO_MODE = {v: k for k, v in KUMO_TO_HVAC_MODE.items()}
-
-# Fan speed mappings
-KUMO_FAN_SPEEDS = [FAN_SPEED_AUTO, FAN_SPEED_LOW, FAN_SPEED_MEDIUM, FAN_SPEED_HIGH]
-
-# Air direction mappings
-KUMO_AIR_DIRECTIONS = [
-    AIR_DIRECTION_HORIZONTAL,
-    AIR_DIRECTION_VERTICAL,
-    AIR_DIRECTION_SWING,
-]
 
 
 async def async_setup_entry(
@@ -260,15 +249,20 @@ class KumoCloudClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def fan_mode(self) -> str | None:
-        """Return current fan mode."""
+        """Return current fan mode (translated to user-friendly label)."""
         # Check device data first, then adapter data
         device_data = self.device.device_data
         adapter = self.device.zone_data.get("adapter", {})
-        return device_data.get("fanSpeed", adapter.get("fanSpeed"))
+        api_fan_speed = device_data.get("fanSpeed", adapter.get("fanSpeed"))
+
+        # Translate API value to UI label
+        if api_fan_speed:
+            return API_TO_UI_FAN.get(api_fan_speed, api_fan_speed)
+        return None
 
     @property
     def fan_modes(self) -> list[str] | None:
-        """Return the list of available fan modes."""
+        """Return the list of available fan modes based on device capabilities."""
         profile = self.device.profile_data
         if not profile:
             return None
@@ -279,24 +273,28 @@ class KumoCloudClimate(CoordinatorEntity, ClimateEntity):
         if num_fan_speeds == 0:
             return None
 
-        # Return fan modes based on number of speeds supported
-        modes = [FAN_SPEED_AUTO]
-        if num_fan_speeds >= 1:
-            modes.append(FAN_SPEED_LOW)
-        if num_fan_speeds >= 2:
-            modes.append(FAN_SPEED_MEDIUM)
-        if num_fan_speeds >= 3:
-            modes.append(FAN_SPEED_HIGH)
+        # Return auto plus the number of speeds the device supports
+        # numberOfFanSpeeds indicates how many speeds beyond auto
+        modes = [UI_FAN_SPEEDS[0]]  # Always include auto
+
+        # Add speeds based on device capability (1-5 speeds possible)
+        for i in range(1, min(num_fan_speeds + 1, len(UI_FAN_SPEEDS))):
+            modes.append(UI_FAN_SPEEDS[i])
 
         return modes
 
     @property
     def swing_mode(self) -> str | None:
-        """Return current swing mode."""
+        """Return current vane position (translated to user-friendly label)."""
         # Check device data first, then adapter data
         device_data = self.device.device_data
         adapter = self.device.zone_data.get("adapter", {})
-        return device_data.get("airDirection", adapter.get("airDirection"))
+        api_vane_position = device_data.get("airDirection", adapter.get("airDirection"))
+
+        # Translate API value to UI label
+        if api_vane_position:
+            return API_TO_UI_VANE.get(api_vane_position, api_vane_position)
+        return None
 
     @property
     def swing_modes(self) -> list[str] | None:
@@ -307,13 +305,11 @@ class KumoCloudClimate(CoordinatorEntity, ClimateEntity):
 
         profile_data = profile[0] if isinstance(profile, list) else profile
 
-        modes = []
-        if profile_data.get("hasVaneDir", False) or profile_data.get(
-            "hasVaneSwing", False
-        ):
-            modes.extend(KUMO_AIR_DIRECTIONS)
+        # If device supports vane control, return all positions
+        if profile_data.get("hasVaneDir", False) or profile_data.get("hasVaneSwing", False):
+            return UI_VANE_POSITIONS.copy()
 
-        return modes if modes else None
+        return None
 
     @property
     def min_temp(self) -> float:
@@ -411,12 +407,16 @@ class KumoCloudClimate(CoordinatorEntity, ClimateEntity):
             await self._send_command_and_refresh(commands)
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
-        """Set new target fan mode."""
-        await self._send_command_and_refresh({"fanSpeed": fan_mode})
+        """Set new target fan mode (translate UI label to API value)."""
+        # Translate UI label to API value
+        api_value = UI_TO_API_FAN.get(fan_mode, fan_mode)
+        await self._send_command_and_refresh({"fanSpeed": api_value})
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
-        """Set new target swing mode."""
-        await self._send_command_and_refresh({"airDirection": swing_mode})
+        """Set new target swing mode (translate UI label to API value)."""
+        # Translate UI label to API value
+        api_value = UI_TO_API_VANE.get(swing_mode, swing_mode)
+        await self._send_command_and_refresh({"airDirection": api_value})
 
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
