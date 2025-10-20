@@ -297,11 +297,13 @@ class KumoCloudClimate(CoordinatorEntity, ClimateEntity):
             return None
 
         # Return auto plus the number of speeds the device supports
-        # numberOfFanSpeeds indicates how many speeds beyond auto
+        # Note: numberOfFanSpeeds seems to underreport by 1 for some devices (cassettes)
+        # Add +1 to account for this, which gives cassettes: Auto, Quiet, Low, Medium, High
+        # And allows wall/floor units with more speeds to show all available options
         modes = [UI_FAN_SPEEDS[0]]  # Always include auto
 
-        # Add speeds based on device capability (1-5 speeds possible)
-        for i in range(1, min(num_fan_speeds + 1, len(UI_FAN_SPEEDS))):
+        # Add speeds based on device capability, with +1 to account for underreporting
+        for i in range(1, min(num_fan_speeds + 2, len(UI_FAN_SPEEDS))):
             modes.append(UI_FAN_SPEEDS[i])
 
         return modes
