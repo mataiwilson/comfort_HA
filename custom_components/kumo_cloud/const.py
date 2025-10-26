@@ -73,25 +73,25 @@ AIR_DIRECTION_VERTICAL = "vertical"
 API_TO_UI_VANE = {
     "auto": "Auto",
     "swing": "Swing",
-    "vertical": "1 - Vertical",
-    "midvertical": "2 - Mid-Vertical",
+    "vertical": "1 - Lowest",
+    "midvertical": "2 - Low",
     "midpoint": "3 - Middle",
-    "midhorizontal": "4 - Mid-Horizontal",
-    "horizontal": "5 - Horizontal",
+    "midhorizontal": "4 - High",
+    "horizontal": "5 - Highest",
 }
 
 UI_TO_API_VANE = {
     "Auto": "auto",
     "Swing": "swing",
-    "1 - Vertical": "vertical",
-    "2 - Mid-Vertical": "midvertical",
+    "1 - Lowest": "vertical",
+    "2 - Low": "midvertical",
     "3 - Middle": "midpoint",
-    "4 - Mid-Horizontal": "midhorizontal",
-    "5 - Horizontal": "horizontal",
+    "4 - High": "midhorizontal",
+    "5 - Highest": "horizontal",
 }
 
 # All air directions in order (UI labels)
-UI_VANE_POSITIONS = ["Auto", "Swing", "1 - Vertical", "2 - Mid-Vertical", "3 - Middle", "4 - Mid-Horizontal", "5 - Horizontal"]
+UI_VANE_POSITIONS = ["Auto", "Swing", "1 - Lowest", "2 - Low", "3 - Middle", "4 - High", "5 - Highest"]
 
 # Default scan interval in seconds
 DEFAULT_SCAN_INTERVAL = 60
